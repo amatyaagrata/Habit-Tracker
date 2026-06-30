@@ -1,10 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import HabitList from './Components/HabitList.jsx';
 import { sampleHabits } from './data/sampleHabits';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import AddHabitForm from './Components/AddHabitForm.jsx';
-import HabitCard from './Components/HabitCard.jsx';
 
+// ── BEGINNER FRIENDLY STREAK CALCULATION ──
+// Calculates consecutive days completed up to today
+function calculateStreak(completedDates) {
+  if (!completedDates || completedDates.length === 0) {
+    return 0;
+  }
+
+  let streak = 0;
+  let currentDate = new Date();
+  
+  // Get date strings for today and yesterday
+  const todayString = currentDate.toDateString();
+  
+  let yesterdayDate = new Date();
+  yesterdayDate.setDate(currentDate.getDate() - 1);
+  const yesterdayString = yesterdayDate.toDateString();
+
+  // If the habit was not completed today AND not completed yesterday, the streak is broken (0)
+  if (!completedDates.includes(todayString) && !completedDates.includes(yesterdayString)) {
+    return 0;
+  }
+
+  // Choose our starting date to check backwards:
+  // If completed today, start checking backwards from today.
+  // If not completed today (but was completed yesterday), start from yesterday.
+  let checkDate = new Date();
+  if (!completedDates.includes(todayString)) {
+    checkDate.setDate(checkDate.getDate() - 1); // Start from yesterday
+  }
+
+  // Loop backwards day-by-day and count how many consecutive days are completed
+  while (true) {
+    const dateStr = checkDate.toDateString();
+    
+    // If this date is in the completions list, we increase the streak
+    if (completedDates.includes(dateStr)) {
+      streak = streak + 1;
+      // Move checkDate to the previous day
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      // As soon as we find a day that was missed, we stop counting
+      break;
+    }
+  }
+
+  return streak;
+}
 
 /* SVG Icons */
 const LeafIcon = ({ className = "w-7 h-7" }) => (
@@ -15,37 +61,60 @@ const LeafIcon = ({ className = "w-7 h-7" }) => (
 );
 
 export default function App() {
+  // Use React state to hold the habits list
   const [habits, setHabits] = useState(sampleHabits);
 
+  // useEffect runs once when the app loads (on initial mount)
+  useEffect(() => {
+    // We check all habits and reset their streak to 0 if they are broken
+    setHabits(prevHabits => {
+      return prevHabits.map(habit => {
+        const currentStreak = calculateStreak(habit.completedDates);
+        return {
+          ...habit,
+          streak: currentStreak // update streak with correct calculated value
+        };
+      });
+    });
+  }, []);
+
+  // Handler to add a new habit
   const handleAddHabit = (newHabit) => {
     setHabits([...habits, newHabit]);
-
-    // Send the new habit to the server to write it to sampleHabits.jsx
-    fetch('/api/habits', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newHabit),
-    }).catch(err => console.error('Failed to write habit to sampleHabits.jsx:', err));
   };
 
-  const handleTickHabit = (habitId) => {
+  // Handler to toggle completion of today's date
+  const handleToggleHabit = (habitId) => {
     setHabits(habits.map(habit => {
       if (habit.id === habitId) {
         const today = new Date().toDateString();
         const alreadyCompleted = habit.completedDates.includes(today);
         
-        if (!alreadyCompleted) {
-          const newStreak = (habit.streak || 0) + 1;
-          return {
-            ...habit,
-            completedDates: [...habit.completedDates, today],
-            streak: newStreak
-          };
+        let updatedCompletions;
+        if (alreadyCompleted) {
+          // If already completed, remove today's date (untick)
+          updatedCompletions = habit.completedDates.filter(date => date !== today);
+        } else {
+          // If not completed, add today's date (tick)
+          updatedCompletions = [...habit.completedDates, today];
         }
-        return habit;
+
+        // Calculate the new streak based on the updated completions list
+        const updatedStreak = calculateStreak(updatedCompletions);
+
+        return {
+          ...habit,
+          completedDates: updatedCompletions,
+          streak: updatedStreak
+        };
       }
       return habit;
     }));
+  };
+
+  // Handler to delete a habit
+  const handleDeleteHabit = (habitId) => {
+    setHabits(habits.filter(habit => habit.id !== habitId));
   };
 
   return (
@@ -56,14 +125,13 @@ export default function App() {
           <HabitList 
             habits={habits} 
             onAddHabit={handleAddHabit}
-            onTickHabit={handleTickHabit}
+            onTickHabit={handleToggleHabit}
+            onDeleteHabit={handleDeleteHabit}
           />
         } />
-        <Route path ="/AddHabitForm" element={
-          <AddHabitForm 
-            habits={habits} 
-            onAddHabit={handleAddHabit}
-            onTickHabit={handleTickHabit}
+        <Route path="/AddHabitForm" element={
+          <AddHabitFormWrapper 
+            onAdd={handleAddHabit}
           />
         } />
       </Routes>
@@ -71,6 +139,20 @@ export default function App() {
         <Route path="/habit/:id" element={<div>Habit Details Page</div>} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+// Simple wrapper component to handle navigation on submit or cancel
+function AddHabitFormWrapper({ onAdd }) {
+  const navigate = useNavigate();
+  return (
+    <AddHabitForm 
+      onAdd={(habit) => {
+        onAdd(habit);
+        navigate('/');
+      }}
+      onCancel={() => navigate('/')}
+    />
   );
 }
 

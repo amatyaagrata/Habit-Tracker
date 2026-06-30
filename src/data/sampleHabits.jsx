@@ -19,7 +19,7 @@ export const sampleHabits = [
     "id": 2,
     "name": "Exercise (30 min)",
     "frequency": "daily",
-    "streak": 3,
+    "streak": 0,
     "completedDates": [
       "Tue Jun 23 2026",
       "Thu Jun 25 2026",
@@ -32,7 +32,7 @@ export const sampleHabits = [
     "id": 3,
     "name": "Meditate (10 min)",
     "frequency": "daily",
-    "streak": 5,
+    "streak": 0,
     "completedDates": [
       "Wed Jun 24 2026",
       "Thu Jun 25 2026",
@@ -41,22 +41,6 @@ export const sampleHabits = [
       "Sun Jun 28 2026"
     ],
     "createdAt": "2026-06-14T05:57:36.989Z"
-  },
-  {
-    "id": 1782712656975,
-    "name": "hello",
-    "frequency": "daily",
-    "streak": 0,
-    "completedDates": [],
-    "createdAt": "2026-06-29T05:57:36.975Z"
-  },
-  {
-    "id": 1782713336753,
-    "name": "Taking medicine (before having something )",
-    "frequency": "daily",
-    "streak": 0,
-    "completedDates": [],
-    "createdAt": "2026-06-29T06:08:56.753Z"
   }
 ];
 export default sampleHabits;
