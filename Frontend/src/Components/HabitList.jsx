@@ -1,11 +1,32 @@
+/**
+ * HabitList.jsx — Dashboard Component
+ *
+ * This component renders the main habit tracking dashboard, which includes:
+ *   1. A header bar with completion stats and a "New Habit" button
+ *   2. Three summary stat cards (Total Habits, Today's Progress, Longest Streak)
+ *   3. A responsive grid of HabitCard components (or an empty state)
+ *   4. An optional modal overlay for the AddHabitForm
+ *
+ * Props received from App.jsx:
+ *   - habits:        Array of habit objects
+ *   - onAddHabit:    Callback to add a new habit
+ *   - onTickHabit:   Callback to toggle today's completion
+ *   - onDeleteHabit: Callback to remove a habit
+ */
+
 import React, { useState } from 'react';
-import HabitCard from './HabitCard';
-import AddHabitForm from './AddHabitForm';
-import { useNavigate } from 'react-router-dom';
+import HabitCard from './HabitCard';       // Individual habit card component
+import AddHabitForm from './AddHabitForm'; // Modal form for creating new habits
+import { useNavigate } from 'react-router-dom'; // Programmatic navigation hook
 
-/* ── SVG ICONS (Icons for dashboard headers/stats) ── */
+// ─────────────────────────────────────────────────────────
+// SVG ICON COMPONENTS
+// ─────────────────────────────────────────────────────────
 
-// PlusIcon: Displays a '+' sign for the create button
+/**
+ * PlusIcon — Renders a "+" symbol for the "New Habit" button.
+ * @param {string} className - Tailwind size classes (default: "w-5 h-5")
+ */
 const PlusIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <line x1="12" y1="5" x2="12" y2="19"/>
@@ -13,7 +34,10 @@ const PlusIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
-// SproutIcon: Cute green sprout shown when the habit list is empty
+/**
+ * SproutIcon — Decorative sprout illustration for the empty state.
+ * Displayed when the user has no habits yet.
+ */
 const SproutIcon = ({ className = "w-14 h-14" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#88bda4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M7 20h10"/>
@@ -23,7 +47,9 @@ const SproutIcon = ({ className = "w-14 h-14" }) => (
   </svg>
 );
 
-// ChartIcon: Icon for the "Total Habits" stats box
+/**
+ * ChartIcon — Bar chart icon for the "Total Habits" stats card.
+ */
 const ChartIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#659287" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="12" width="4" height="8" rx="1"/>
@@ -32,7 +58,9 @@ const ChartIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
-// TargetIcon: Icon for the "Today's Progress" stats box
+/**
+ * TargetIcon — Bullseye/target icon for the "Today's Progress" stats card.
+ */
 const TargetIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#659287" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
@@ -41,52 +69,65 @@ const TargetIcon = ({ className = "w-5 h-5" }) => (
   </svg>
 );
 
-// FlameIcon: Icon for the "Longest Streak" stats box
+/**
+ * FlameIcon — Fire/flame icon for the "Longest Streak" stats card.
+ */
 const FlameIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="#659287" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
   </svg>
 );
 
-/* ── MAIN HABITLIST COMPONENT ── */
-// Receives:
-// - `habits`: The array of habits from the parent state (App.jsx)
-// - `onAddHabit`: Handler to add a habit (passed to AddHabitForm if rendering as modal)
-// - `onTickHabit`: Handler to toggle completion (passed to HabitCard)
-// - `onDeleteHabit`: Handler to delete a habit (passed to HabitCard - Prop Drilling)
+// ─────────────────────────────────────────────────────────
+// MAIN HABITLIST COMPONENT
+// ─────────────────────────────────────────────────────────
+
+/**
+ * HabitList — The main dashboard view.
+ *
+ * @param {Object[]} habits       - Array of habit objects from App state
+ * @param {Function} onAddHabit   - Callback to add a new habit to App state
+ * @param {Function} onTickHabit  - Callback to toggle today's completion for a habit
+ * @param {Function} onDeleteHabit - Callback to delete a habit from App state
+ */
 const HabitList = ({ habits, onAddHabit, onTickHabit, onDeleteHabit }) => {
   
-  // Local state to toggle showing the AddHabitForm modal overlay
+  // ── LOCAL STATE ──
+  // Controls visibility of the AddHabitForm modal overlay
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // 1. Calculate sum of all streaks in the habits list using array.reduce()
+  // ── COMPUTED VALUES ──
+
+  // Sum of all individual streak values across all habits
+  // Array.reduce() iterates over every habit and accumulates their streak values
   const totalStreak = habits.reduce((sum, habit) => sum + (habit.streak || 0), 0);
   
-  // 2. Count how many habits are completed today by filtering and checking if today's date is in completedDates
+  // Count of habits that have today's date in their completedDates array
   const completedToday = habits.filter(habit => 
     habit.completedDates?.includes(new Date().toDateString())
   ).length;
 
-  // React router navigate function to redirect pages
+  // React Router's navigate function — used to redirect to the AddHabitForm route
   const navigate = useNavigate();
   
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       
-      {/* Header section with top completion stats and New Habit button */}
+      {/* ──────────── HEADER SECTION ──────────── */}
+      {/* Shows completion stats on the left and "New Habit" button on the right */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          {/* Displays progress, e.g. "2/5 completed today" */}
+          {/* Summary text: "2/5 completed today · 12 total streak days" */}
           <p style={{ color: '#527a6f' }}>
             {completedToday}/{habits.length} completed today &middot; {totalStreak} total streak days
           </p>
         </div>
         
-        {/* Click redirects the browser to '/AddHabitForm' route */}
+        {/* New Habit button — navigates to the AddHabitForm route */}
         <button
           onClick={() => {
-            navigate('/AddHabitForm');
-            setShowAddForm(true);
+            navigate('/AddHabitForm');   // Navigate to the add habit page
+            setShowAddForm(true);        // Also set local state (used for modal mode)
           }}
           className="btn-primary flex items-center gap-2"
         >
@@ -95,9 +136,11 @@ const HabitList = ({ habits, onAddHabit, onTickHabit, onDeleteHabit }) => {
         </button>
       </div>
 
-      {/* Stats Cards Section (3 boxes representing the current state summary) */}
+      {/* ──────────── STATS CARDS SECTION ──────────── */}
+      {/* Three cards in a responsive 3-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {/* Card 1: Total Habits count */}
+
+        {/* Card 1: Total number of habits */}
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <ChartIcon className="w-4 h-4" />
@@ -106,32 +149,35 @@ const HabitList = ({ habits, onAddHabit, onTickHabit, onDeleteHabit }) => {
           <p className="text-2xl font-bold" style={{ color: '#3f6258' }}>{habits.length}</p>
         </div>
         
-        {/* Card 2: Today's completion percentage (progress bar calculation) */}
+        {/* Card 2: Today's completion percentage */}
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <TargetIcon className="w-4 h-4" />
             <p className="text-sm" style={{ color: '#769e8f' }}>Today's Progress</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: '#659287' }}>
+            {/* Calculate percentage: (completed / total) × 100, rounded to nearest integer */}
             {habits.length > 0 ? Math.round((completedToday / habits.length) * 100) : 0}%
           </p>
         </div>
         
-        {/* Card 3: Longest individual streak in the list using Math.max() */}
+        {/* Card 3: Longest individual streak among all habits */}
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-1">
             <FlameIcon className="w-4 h-4" />
             <p className="text-sm" style={{ color: '#769e8f' }}>Longest Streak</p>
           </div>
           <p className="text-2xl font-bold" style={{ color: '#659287' }}>
+            {/* Math.max() with spread operator finds the highest streak value */}
             {habits.length > 0 ? Math.max(...habits.map(h => h.streak || 0)) : 0} days
           </p>
         </div>
       </div>
 
-      {/* Habit List Grid Rendering */}
+      {/* ──────────── HABIT CARDS GRID ──────────── */}
       {habits.length === 0 ? (
-        // If there are zero habits: Show a beautiful empty state
+        // ── EMPTY STATE ──
+        // Displayed when the user has no habits — encourages them to create one
         <div className="text-center py-16 modal-content" style={{ padding: '4rem 2rem' }}>
           <SproutIcon className="w-16 h-16 mx-auto mb-4" />
           <h3 className="text-xl font-semibold" style={{ color: '#3f6258' }}>No habits yet</h3>
@@ -144,33 +190,33 @@ const HabitList = ({ habits, onAddHabit, onTickHabit, onDeleteHabit }) => {
           </button>
         </div>
       ) : (
-        // If there are habits: Map over them and render a HabitCard for each habit
+        // ── POPULATED STATE ──
+        // Renders a responsive 1-2 column grid of HabitCard components
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {habits.map((habit) => (
             <HabitCard 
-              key={habit.id} 
-              habit={habit} 
-              onTick={onTickHabit}
-              onDelete={onDeleteHabit} // Prop Drilling: Passing callback down
+              key={habit.id}           // Unique key for React's reconciliation
+              habit={habit}            // The habit data object
+              onTick={onTickHabit}     // Toggle completion callback (prop drilling)
+              onDelete={onDeleteHabit} // Delete habit callback (prop drilling)
             />
           ))}
         </div>
       )}
 
-      {/* Add Habit Modal: Displays overlay modal if showAddForm is true */}
+      {/* ──────────── ADD HABIT MODAL ──────────── */}
+      {/* Conditionally rendered overlay modal for creating a new habit */}
       {showAddForm && (
         <AddHabitForm 
           onAdd={(habit) => {
-            onAddHabit(habit); // Add the habit to state in parent
-            setShowAddForm(false); // Close the modal
+            onAddHabit(habit);        // Add the new habit to App's state
+            setShowAddForm(false);    // Close the modal
           }}
-          onCancel={() => setShowAddForm(false)} // Close the modal
+          onCancel={() => setShowAddForm(false)} // Close the modal without adding
         />
       )}
     </div>
   );
 };
-
-export default HabitList;
 
 export default HabitList;
